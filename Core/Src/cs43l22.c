@@ -6,7 +6,9 @@ extern I2S_HandleTypeDef hi2s3;
 BEEP_CONFIG bconf;
 HEADPHONE_CONFIG hconf;
 PCM_CONFIG pconf;
+SIN_HANDLE sin_hndl;
 
+uint16_t dma_buffer[50000]__attribute__((section(".sin_value_storage")));
 void write_reg(uint8_t reg_addr, int count, ...) {
     uint8_t buff[10];
     va_list args;
@@ -31,12 +33,15 @@ void set_dac() {
 
 void reset_dac() {
     HAL_GPIO_WritePin(Audio_RST_GPIO_Port, Audio_RST_Pin, GPIO_PIN_RESET);
+    sin_hndl.enable = 0;
 }
 
 static void gen_MCLK() {
-    static volatile uint16_t dma_buffer[1];
-    dma_buffer[0] = 0xAAAA;
-    HAL_StatusTypeDef status = HAL_I2S_Transmit_DMA(&hi2s3, dma_buffer, 1);
+	// HAL_FLASH_Unlock();
+	uint64_t temp_data = 0x89ABCDEF;
+    // HAL_FLASH_Program(TYPEPROGRAMDATA_HALFWORD, dma_buffer, temp_data);
+    HAL_I2S_Transmit_DMA(&hi2s3, dma_buffer, 4);
+    // HAL_FLASH_Lock();
 }
 
 //required init as written in datasheet.
@@ -122,13 +127,11 @@ void clock_config() {
     write_reg(CLOCKING_CONF, 1, 0xA0);
 }
 
-void sin_generator(uint16_t ampl, uint32_t sample_rate, uint16_t frequency, uint16_t* sin_data) {
-    if (sample_rate < 2*frequency) return;
-    sin_data = (uint16_t*) malloc (sample_rate*2*sizeof(uint16_t));
-    for (int n = 0; n < sample_rate; n++) {
-        sin_data[2*n] = DIGITAL_SIN(n, ampl, sample_rate, frequency);
-        sin_data[2*n+1] = sin_data[2*n];
-    }
+void sin_generator() {
+    if (Fs < 2*sin_hndl.frequency) return;
+    //50kB memory is needed
+    for (int n = 0; n < Fs; n++)
+        dma_buffer[n] = DIGITAL_SIN(n, sin_hndl.amplitude, sin_hndl.frequency);
 }
 
 void init_PCM() {
@@ -146,19 +149,33 @@ void PCM_config() {
     write_reg(PCMx_VOL_BURST, 2, pcmx_vol, pcmx_vol);
 }
 
+void sin_transmition() {
+    static uint16_t mem_cnt = 0;
+    uint16_t sin_buff[2] = {dma_buffer[mem_cnt], dma_buffer[mem_cnt]};
+    HAL_I2S_Transmit_DMA(&hi2s3, sin_buff, 2);
+    if (++mem_cnt == Fs) mem_cnt = 0;
+}
+
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
+    if (sin_hndl.enable)
+        sin_transmition();
+    else
+        HAL_I2S_Transmit_DMA(&hi2s3, dma_buffer, 1);
+}
+
 void sin_player(uint16_t freq, uint16_t ampl) {
+    //initial config
     config_register_mode();
     master_config(MASTR_VOL_MIN+0x52, 0);
     headphone_config();
     clock_config();
     PCM_config();
     power_up();
-
-    uint16_t Fs = 48828;
-    static uint16_t sin_data[2];
-    sin_data[0] = DIGITAL_SIN(0, ampl, Fs, freq);
-    sin_data[1] = DIGITAL_SIN(0, ampl, Fs, freq);
-    //HAL_I2S_Transmit_IT(&hi2s3, sin_data, 2);
+    //sin generation
+    sin_hndl.frequency = freq;
+    sin_hndl.amplitude = ampl;
+    sin_generator();
+    sin_hndl.enable = 1;
 }
 
 void generate_beep() {

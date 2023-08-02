@@ -7,7 +7,6 @@ USB_HOST/
 .project
 .cproject
 .mxproject
-STM32F407VGTX_FLASH.ld
 STM32F407VGTX_RAM.ld
 sin_generation.ioc
 Core/Inc/main.h

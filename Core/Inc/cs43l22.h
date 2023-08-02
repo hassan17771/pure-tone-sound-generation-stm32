@@ -33,6 +33,12 @@ typedef struct __PCM_CONFIG {
     uint8_t mute;
     uint8_t vol;
 } PCM_CONFIG;
+
+typedef struct __SIN_HANDLE {
+    uint8_t enable;
+    uint16_t frequency;
+    uint16_t amplitude;
+} SIN_HANDLE;
 /*--------------constants------------------*/
 //dev addrs
 #define CS43L22_write 0x94
@@ -74,14 +80,16 @@ typedef struct __PCM_CONFIG {
 #define HP_MAX_GAIN 0x1 //1.143 step 0.14 
 #define HP_MIN_GAIN 0x0 //0.3959 step 0.14
 #define HP_ON 0xA //always on
-#define HP_OFF 0xF //always off
+#define HP_OFF 0xF //always off0.000016985
 #define HP_MUTE 0x1
 #define HP_UNMUTE 0x0
 #define HP_MAX_VOL 0x0 //0dB step 0.5
 #define HP_MIN_VOL 0x1 //mute
 //sin generation
-#define PI 3.14159265358979323846
-#define DIGITAL_SIN(n, ampl, Fs, f) (ampl + round(ampl * sin(2 * PI * n * f / Fs)))
+#define Fs 48875
+#define Fs_INV 0.000020460358056265f // 1/48875
+#define TWO_PI  6.28318530717958647692f
+#define DIGITAL_SIN(n, ampl, f) (ampl + round(ampl * sin(TWO_PI * n * f * Fs_INV)))
 #define MAX_AMPLITUDE 32767
 #define MIN_AMPLITUDE 10
 //PCM
@@ -92,7 +100,6 @@ typedef struct __PCM_CONFIG {
 /*---------------declrations---------------*/
 void generate_beep();
 void sin_player(uint16_t freq, uint16_t ampl);
-void sin_player_test();
 
 #ifdef __cplusplus
 }

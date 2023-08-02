@@ -110,8 +110,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //sin_player(1000, MAX_AMPLITUDE);
-  generate_beep();
+  sin_player(1000, MAX_AMPLITUDE);
   while (1)
   {
     /* USER CODE END WHILE */
