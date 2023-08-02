@@ -194,12 +194,6 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
-  save sin values on flash not ram
-  .sin_value_storage :
-  {
-    KEEP(*(.sin_value_storage));
-  } > FLASH
-
   /* Remove information from the compiler libraries */
   /DISCARD/ :
   {

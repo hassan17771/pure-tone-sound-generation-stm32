@@ -8,7 +8,8 @@ HEADPHONE_CONFIG hconf;
 PCM_CONFIG pconf;
 SIN_HANDLE sin_hndl;
 
-uint16_t dma_buffer[50000]__attribute__((section(".sin_value_storage")));
+uint16_t dummy_buffer;
+
 void write_reg(uint8_t reg_addr, int count, ...) {
     uint8_t buff[10];
     va_list args;
@@ -37,11 +38,8 @@ void reset_dac() {
 }
 
 static void gen_MCLK() {
-	// HAL_FLASH_Unlock();
-	uint64_t temp_data = 0x89ABCDEF;
-    // HAL_FLASH_Program(TYPEPROGRAMDATA_HALFWORD, dma_buffer, temp_data);
-    HAL_I2S_Transmit_DMA(&hi2s3, dma_buffer, 4);
-    // HAL_FLASH_Lock();
+	dummy_buffer = 0xAAAA;
+    HAL_I2S_Transmit_DMA(&hi2s3, &dummy_buffer, 1);
 }
 
 //required init as written in datasheet.
@@ -116,22 +114,28 @@ void headphone_config() {
     write_reg(HP_X_VOL_BURST, 2, hconf.vol, hconf.vol);
 }
 
-void test() {
-    uint8_t buff[100];
-    read_reg(0x1C, 3, buff);
-    read_reg(STATUS, 1, buff);
-}
-
 //using a config as datasheet , value of CLOCKING  register depends on MCLK and Fs(LRCLK) values 
 void clock_config() {
     write_reg(CLOCKING_CONF, 1, 0xA0);
 }
 
 void sin_generator() {
+    uint16_t temp_sin_data;
+    //erasing the sector before using it
+    uint32_t sector_erase_error = 0;
+    FLASH_EraseInitTypeDef f_erase = {0};
+    f_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+    f_erase.Sector = FLASH_SECTOR_11;
+    f_erase.NbSectors = 1;
+    HAL_FLASH_Unlock();
+    HAL_FLASHEx_Erase(&f_erase, &sector_erase_error);
+    //init flash sector
     if (Fs < 2*sin_hndl.frequency) return;
-    //50kB memory is needed
-    for (int n = 0; n < Fs; n++)
-        dma_buffer[n] = DIGITAL_SIN(n, sin_hndl.amplitude, sin_hndl.frequency);
+    for (int n = 0; n < Fs; n++) {
+        temp_sin_data = DIGITAL_SIN(n, sin_hndl.amplitude, sin_hndl.frequency);
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_SECTOR11_START+(n*2), temp_sin_data);
+    }
+    HAL_FLASH_Lock();
 }
 
 void init_PCM() {
@@ -151,16 +155,16 @@ void PCM_config() {
 
 void sin_transmition() {
     static uint16_t mem_cnt = 0;
-    uint16_t sin_buff[2] = {dma_buffer[mem_cnt], dma_buffer[mem_cnt]};
+    uint16_t sin_buff[2] = {*((uint32_t*)FLASH_SECTOR11_START+(mem_cnt*2)), *((uint32_t*)FLASH_SECTOR11_START+(mem_cnt*2))};
     HAL_I2S_Transmit_DMA(&hi2s3, sin_buff, 2);
-    if (++mem_cnt == Fs) mem_cnt = 0;
+    if (++mem_cnt == Fs-1) mem_cnt = 0;
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
     if (sin_hndl.enable)
         sin_transmition();
     else
-        HAL_I2S_Transmit_DMA(&hi2s3, dma_buffer, 1);
+        HAL_I2S_Transmit_DMA(&hi2s3, &dummy_buffer, 1);
 }
 
 void sin_player(uint16_t freq, uint16_t ampl) {
@@ -185,5 +189,4 @@ void generate_beep() {
     headphone_config();
     clock_config();
     power_up();
-    test();
 }
