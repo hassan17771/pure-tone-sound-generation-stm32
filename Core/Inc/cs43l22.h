@@ -86,10 +86,11 @@ typedef struct __SIN_HANDLE {
 #define HP_MAX_VOL 0x0 //0dB step 0.5
 #define HP_MIN_VOL 0x1 //mute
 //sin generation
-#define Fs 48875
-#define Fs_INV 0.000020460358056265f // 1/48875
+#define I2S_WORK 16
+#define Fs 48780
+#define Fs_INV 0.00002050020500205f // 1/48780
 #define TWO_PI  6.28318530717958647692f
-#define DIGITAL_SIN(n, ampl, f) (uint16_t)(ampl + round(ampl * sin(TWO_PI * n * f * Fs_INV)))
+#define DIGITAL_SIN(n, ampl, f) (uint16_t)(ampl + round(ampl * sin(TWO_PI * n * f / Fs)))
 #define MAX_AMPLITUDE 32767
 #define MIN_AMPLITUDE 10
 #define FLASH_SECTOR11_START 0x080E0000

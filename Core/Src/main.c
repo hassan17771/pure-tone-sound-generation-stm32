@@ -43,7 +43,6 @@
 I2C_HandleTypeDef hi2c1;
 
 I2S_HandleTypeDef hi2s3;
-DMA_HandleTypeDef hdma_spi3_tx;
 
 SPI_HandleTypeDef hspi1;
 
@@ -55,7 +54,6 @@ USART_HandleTypeDef husart2;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_I2S3_Init(void);
 static void MX_SPI1_Init(void);
@@ -98,7 +96,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2S3_Init();
   MX_SPI1_Init();
@@ -110,7 +107,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  sin_player(1000, MAX_AMPLITUDE);
+  sin_player(1000, 1<<13);
+  //generate_beep();
   while (1)
   {
     /* USER CODE END WHILE */
@@ -303,22 +301,6 @@ static void MX_USART2_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Stream5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
 }
 

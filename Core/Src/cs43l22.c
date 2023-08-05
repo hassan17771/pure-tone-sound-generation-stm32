@@ -9,6 +9,7 @@ PCM_CONFIG pconf;
 SIN_HANDLE sin_hndl;
 
 uint16_t dummy_buffer;
+uint16_t i2s_buff[8];
 
 void write_reg(uint8_t reg_addr, int count, ...) {
     uint8_t buff[10];
@@ -38,8 +39,8 @@ void reset_dac() {
 }
 
 static void gen_MCLK() {
-	dummy_buffer = 0xAAAA;
-    HAL_I2S_Transmit_DMA(&hi2s3, &dummy_buffer, 1);
+	dummy_buffer = 0;
+    HAL_I2S_Transmit_IT(&hi2s3, &dummy_buffer, 1);
 }
 
 //required init as written in datasheet.
@@ -119,7 +120,7 @@ void clock_config() {
     write_reg(CLOCKING_CONF, 1, 0xA0);
 }
 
-void sin_generator() {
+void save_sin_on_flash() {
     uint16_t temp_sin_data;
     //erasing the sector before using it
     uint32_t sector_erase_error = 0;
@@ -153,18 +154,42 @@ void PCM_config() {
     write_reg(PCMx_VOL_BURST, 2, pcmx_vol, pcmx_vol);
 }
 
+void read_flash(uint16_t* data_array, uint32_t flash_addr) {
+    uint64_t flash_page = *(uint64_t*)flash_addr;
+    data_array[3] = flash_page >> 48;
+    data_array[2] = (flash_page << 16) >> 48;
+    data_array[1] = (flash_page << 32) >> 48;
+    data_array[0] = (flash_page << 48) >> 48;
+}
+
 void sin_transmition() {
-    static uint16_t mem_cnt = 0;
-    uint16_t sin_buff[2] = {*((uint32_t*)FLASH_SECTOR11_START+(mem_cnt*2)), *((uint32_t*)FLASH_SECTOR11_START+(mem_cnt*2))};
-    HAL_I2S_Transmit_DMA(&hi2s3, sin_buff, 2);
-    if (++mem_cnt == Fs-1) mem_cnt = 0;
+    static uint16_t mem_cnt = 1;
+    uint16_t sin_data[4];
+    read_flash(sin_data, FLASH_SECTOR11_START+(mem_cnt-1)*8);
+    i2s_buff[0] = sin_data[0];
+    i2s_buff[1] = sin_data[0];
+    i2s_buff[2] = sin_data[1];
+    i2s_buff[3] = sin_data[1];
+    i2s_buff[4] = sin_data[2];
+    i2s_buff[5] = sin_data[2];
+    i2s_buff[6] = sin_data[3];
+    i2s_buff[7] = sin_data[3];
+    if (mem_cnt >= (int)(Fs/4)){
+    	uint8_t rem = Fs % 4;
+        if (rem != 0) HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 2*rem);
+        else  HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 8);
+        mem_cnt = 1;
+    } else {
+    	HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 8);
+    	mem_cnt++;
+    }
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
     if (sin_hndl.enable)
         sin_transmition();
     else
-        HAL_I2S_Transmit_DMA(&hi2s3, &dummy_buffer, 1);
+        HAL_I2S_Transmit_IT(&hi2s3, &dummy_buffer, 1);
 }
 
 void sin_player(uint16_t freq, uint16_t ampl) {
@@ -178,7 +203,7 @@ void sin_player(uint16_t freq, uint16_t ampl) {
     //sin generation
     sin_hndl.frequency = freq;
     sin_hndl.amplitude = ampl;
-    sin_generator();
+    save_sin_on_flash();
     sin_hndl.enable = 1;
 }
 
