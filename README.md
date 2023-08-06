@@ -20,10 +20,10 @@ __note__: in STM32F407 reference manual is stated that:
 The `sin_player()` function, uses a procedure same as beep test generation, but this time the _PCM_ registers are also initiated which states how the dac gets input from the master. (use `init_PCM()`)
 The sine signal is made by the below equation:
 
-$ DG[n] = \text{ampl} + \text{round}(\text{ampl} \cdot \sin(2 \pi \frac{f}{Fs} \cdot n)) $
+$DG[n] = \text{ampl} + \text{round}(\text{ampl} \cdot \sin(2 \pi \frac{f}{Fs} \cdot n))$
 
 implemented in DIGITAL_SIN micro.
 the sine wave attributes are initiated in the `sin_player()`. and `save_sin_on_flash()` makes a complete signal wave, which period is 1 second and has sample count equal to Fs. this would need a large data storage, so the data is written and read from the flash.
-the flash and it's section addresses are mentioned in the STM32 datasheet. the eleventh section is used in this project because to save a complete 1 sec sine signal on the memory there will be a $ Fs \cdot \text{I2S dataframe bytes} $, which in this project is set to $ 48k \cdot 2 = 96k$ bytes.
+the flash and it's section addresses are mentioned in the STM32 datasheet. the eleventh section is used in this project because to save a complete 1 sec sine signal on the memory there will be a $Fs \cdot \text{I2S dataframe bytes}$, which in this project is set to $ 48k \cdot 2 = 96k$ bytes.
 
 `SIN_HANDLE` typedef is a struct to keep and control sin signal features. by setting `SIN_HANDLE.enable` to 1, __I2S__ complete transfer interrupt callback which used to call another empty __I2S__ to just keep the DAC running, starts to call `sin_transmission()` function. This function is responsible to read the flash memory and send data using I2S to the DAC.
