@@ -52,6 +52,7 @@ typedef struct __SIN_HANDLE {
 #define EN_HP_DIS_SPKR 0xAF // headphone always on, speaker always off
 #define POWER_UP 0x9E // headphone always on, speaker always off
 //regs address
+#define DEVICE_ID 0x01
 #define PLAYBACK_CNTR1 0x0D
 #define PLAYBACK_CNTR2 0x0F
 #define INTERFACE_CTL_1 0x06

@@ -101,9 +101,11 @@ void init_headphone() {
 void partial_write(uint8_t reg_addr, uint8_t val,uint8_t s_bit, uint8_t l_bit) {
     uint8_t initial_val;
     read_reg(reg_addr, 1, &initial_val);
-    uint8_t left_part = (initial_val >> (s_bit+1)) << (s_bit+1);
-    uint8_t right_part = (initial_val << (l_bit+1)) >> (l_bit+1);
+    // reading what was initially in the register, then keep [MSB...s_bit] and [l_bit...LSB], then combining it with desired value
+    uint8_t left_part = initial_val & (0xFF << (s_bit+1));
+    uint8_t right_part = initial_val & (0xFF >> (8 - l_bit));
     val <<= l_bit;
+    uint8_t wtf = left_part+val+right_part;
     write_reg(reg_addr, 1, left_part+val+right_part);
 }
 
@@ -192,10 +194,15 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
         HAL_I2S_Transmit_IT(&hi2s3, &dummy_buffer, 1);
 }
 
+void read_all_regs() {
+    uint8_t all_regs[50];
+    read_reg(DEVICE_ID, 50, all_regs);
+}
+
 void sin_player(uint16_t freq, uint16_t ampl) {
     //initial config
     config_register_mode();
-    master_config(MASTR_VOL_MIN+0x52, 0);
+    master_config(MASTR_VOL_MAX - 0x50, 0);
     headphone_config();
     clock_config();
     PCM_config();
@@ -204,7 +211,9 @@ void sin_player(uint16_t freq, uint16_t ampl) {
     sin_hndl.frequency = freq;
     sin_hndl.amplitude = ampl;
     save_sin_on_flash();
+    //start_sending sin wave
     sin_hndl.enable = 1;
+    read_all_regs();
 }
 
 void generate_beep() {
