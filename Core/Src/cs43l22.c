@@ -164,7 +164,7 @@ void read_flash(uint16_t* data_array, uint32_t flash_addr) {
     data_array[0] = (flash_page << 48) >> 48;
 }
 
-void sin_transmition() {
+void sin_transmission() {
     static uint16_t mem_cnt = 1;
     uint16_t sin_data[4];
     read_flash(sin_data, FLASH_SECTOR11_START+(mem_cnt-1)*8);
@@ -189,7 +189,7 @@ void sin_transmition() {
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
     if (sin_hndl.enable)
-        sin_transmition();
+        sin_transmission();
     else
         HAL_I2S_Transmit_IT(&hi2s3, &dummy_buffer, 1);
 }
