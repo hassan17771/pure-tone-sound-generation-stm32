@@ -105,7 +105,6 @@ void partial_write(uint8_t reg_addr, uint8_t val,uint8_t s_bit, uint8_t l_bit) {
     uint8_t left_part = initial_val & (0xFF << (s_bit+1));
     uint8_t right_part = initial_val & (0xFF >> (8 - l_bit));
     val <<= l_bit;
-    uint8_t wtf = left_part+val+right_part;
     write_reg(reg_addr, 1, left_part+val+right_part);
 }
 
@@ -202,7 +201,7 @@ void read_all_regs() {
 void sin_player(uint16_t freq, uint16_t ampl) {
     //initial config
     config_register_mode();
-    master_config(MASTR_VOL_MAX - 0x50, 0);
+    master_config(MASTR_VOL_MAX - 0x40, 0);
     headphone_config();
     clock_config();
     PCM_config();
