@@ -35,11 +35,14 @@ typedef struct __PCM_CONFIG {
 } PCM_CONFIG;
 
 typedef struct __SIN_HANDLE {
-    uint8_t enable;
     uint16_t frequency;
     uint16_t amplitude;
 } SIN_HANDLE;
 /*--------------constants------------------*/
+//to DAC Tx modes
+#define TX_MCLK 0
+#define TX_SIN 1 
+#define TX_EXTERNAL_MIC 2
 //dev addrs
 #define CS43L22_write 0x94
 #define CS43L22_read 0x95
@@ -100,9 +103,12 @@ typedef struct __SIN_HANDLE {
 #define WORD_LEN_16BIT 0x3
 #define PCM_MAX_VOL 0x18 //12dB step 0.5dB 
 #define PCM_MIN_VOL 0x19 //-51.5dB step 0.5dB
+//Digital MIC
+#define RESCALE_24_TO_16(x) (uint16_t)((1<<16)/(1<<24) * x)
 /*---------------declrations---------------*/
 void generate_beep();
 void sin_player(uint16_t freq, uint16_t ampl);
+void external_mic();
 
 #ifdef __cplusplus
 }

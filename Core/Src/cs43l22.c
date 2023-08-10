@@ -1,15 +1,19 @@
 #include "cs43l22.h"
 
 extern I2C_HandleTypeDef hi2c1;
-extern I2S_HandleTypeDef hi2s3;
+extern I2S_HandleTypeDef hi2s_dac;
+extern I2S_HandleTypeDef hi2s_mic;
 
 BEEP_CONFIG bconf;
 HEADPHONE_CONFIG hconf;
 PCM_CONFIG pconf;
 SIN_HANDLE sin_hndl;
+uint8_t dac_mode;
 
 uint16_t dummy_buffer;
 uint16_t i2s_buff[8];
+uint32_t i2s_mic_rx_buffer;
+uint16_t i2s_mic_tx_buffer;
 
 void write_reg(uint8_t reg_addr, int count, ...) {
     uint8_t buff[10];
@@ -35,12 +39,12 @@ void set_dac() {
 
 void reset_dac() {
     HAL_GPIO_WritePin(Audio_RST_GPIO_Port, Audio_RST_Pin, GPIO_PIN_RESET);
-    sin_hndl.enable = 0;
 }
 
 static void gen_MCLK() {
 	dummy_buffer = 0;
-    HAL_I2S_Transmit_IT(&hi2s3, &dummy_buffer, 1);
+    dac_mode = TX_MCLK;
+    HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1);
 }
 
 //required init as written in datasheet.
@@ -177,20 +181,22 @@ void sin_transmission() {
     i2s_buff[7] = sin_data[3];
     if (mem_cnt >= (int)(Fs/4)){
     	uint8_t rem = Fs % 4;
-        if (rem != 0) HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 2*rem);
-        else  HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 8);
+        if (rem != 0) HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 2*rem);
+        else  HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 8);
         mem_cnt = 1;
     } else {
-    	HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 8);
+    	HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 8);
     	mem_cnt++;
     }
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    if (sin_hndl.enable)
-        sin_transmission();
-    else
-        HAL_I2S_Transmit_IT(&hi2s3, &dummy_buffer, 1);
+    switch(dac_mode) {
+        case TX_SIN: sin_transmission(); break;
+        case TX_MCLK: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break;
+        case TX_EXTERNAL_MIC: HAL_I2S_Receive_IT(&hi2s_dac, (uint16_t*)(&i2s_mic_rx_buffer), 1); break;
+        default: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break; 
+    }
 }
 
 void read_all_regs() {
@@ -211,7 +217,7 @@ void sin_player(uint16_t freq, uint16_t ampl) {
     sin_hndl.amplitude = ampl;
     save_sin_on_flash();
     //start_sending sin wave
-    sin_hndl.enable = 1;
+    dac_mode = TX_SIN;
     read_all_regs();
 }
 
@@ -222,4 +228,24 @@ void generate_beep() {
     headphone_config();
     clock_config();
     power_up();
+}
+
+void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s) {
+    i2s_mic_tx_buffer = RESCALE_24_TO_16(i2s_mic_rx_buffer);
+    HAL_I2S_Transmit_IT(&hi2s_dac, &i2s_mic_tx_buffer, 1);
+}
+
+void start_mic() {
+    HAL_StatusTypeDef state = HAL_I2S_Receive_IT(&hi2s_mic, (uint16_t*)(&i2s_mic_rx_buffer), 1);
+}
+
+void external_mic() {
+    config_register_mode();
+    master_config(MASTR_VOL_MAX, 0);
+    headphone_config();
+    clock_config();
+    PCM_config();
+    power_up();
+    dac_mode = TX_EXTERNAL_MIC;
+    start_mic();
 }
