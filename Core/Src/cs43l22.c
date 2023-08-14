@@ -191,10 +191,11 @@ void sin_transmission() {
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
+	HAL_StatusTypeDef state;
     switch(dac_mode) {
         case TX_SIN: sin_transmission(); break;
         case TX_MCLK: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break;
-        case TX_EXTERNAL_MIC: HAL_I2S_Receive_IT(&hi2s_dac, (uint16_t*)(&i2s_mic_rx_buffer), 1); break;
+        case TX_EXTERNAL_MIC: state = HAL_I2S_Receive_IT(&hi2s_mic, &i2s_mic_rx_buffer, 1); break;
         default: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break; 
     }
 }
@@ -218,7 +219,6 @@ void sin_player(uint16_t freq, uint16_t ampl) {
     save_sin_on_flash();
     //start_sending sin wave
     dac_mode = TX_SIN;
-    read_all_regs();
 }
 
 void generate_beep() {
@@ -231,21 +231,21 @@ void generate_beep() {
 }
 
 void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    i2s_mic_tx_buffer = RESCALE_24_TO_16(i2s_mic_rx_buffer);
-    HAL_I2S_Transmit_IT(&hi2s_dac, &i2s_mic_tx_buffer, 1);
+    i2s_mic_tx_buffer = (uint16_t)(i2s_mic_rx_buffer >> 16);
+    HAL_StatusTypeDef state = HAL_I2S_Transmit_IT(&hi2s_dac, &i2s_mic_tx_buffer, 1);
 }
 
 void start_mic() {
-    HAL_StatusTypeDef state = HAL_I2S_Receive_IT(&hi2s_mic, (uint16_t*)(&i2s_mic_rx_buffer), 1);
+	dac_mode = TX_EXTERNAL_MIC;
+//    HAL_I2S_Receive_IT(&hi2s_mic, (uint16_t*)(&i2s_mic_rx_buffer), 1);
 }
 
 void external_mic() {
     config_register_mode();
-    master_config(MASTR_VOL_MAX, 0);
+    master_config(MASTR_VOL_MAX - 0xA0, 0);
     headphone_config();
     clock_config();
     PCM_config();
     power_up();
-    dac_mode = TX_EXTERNAL_MIC;
     start_mic();
 }

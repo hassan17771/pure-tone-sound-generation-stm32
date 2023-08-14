@@ -104,7 +104,7 @@ typedef struct __SIN_HANDLE {
 #define PCM_MAX_VOL 0x18 //12dB step 0.5dB 
 #define PCM_MIN_VOL 0x19 //-51.5dB step 0.5dB
 //Digital MIC
-#define RESCALE_24_TO_16(x) (uint16_t)((1<<16)/(1<<24) * x)
+//#define RESCALE_24_TO_16(x) ((1<<16)/(1<<24) * x)
 /*---------------declrations---------------*/
 void generate_beep();
 void sin_player(uint16_t freq, uint16_t ampl);
