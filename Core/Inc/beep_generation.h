@@ -1,16 +1,11 @@
-#ifndef __CS43L22_H
-#define __CS43L22_H
+#ifndef __BEEP
+#define __BEEP
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 /*--------------library--------------------*/
-#include "main.h"
-#include "stdarg.h"
-#include <stdint.h>
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include "cs43l22.h"
 /*---------------typedef-------------------*/
 typedef struct __BEEP_CONFIG {
     uint8_t mode;
@@ -20,25 +15,6 @@ typedef struct __BEEP_CONFIG {
     uint8_t vol;
     uint8_t TC_en;
 } BEEP_CONFIG;
-
-typedef struct __HEADPHONE_CONFIG {
-    uint8_t power;
-    uint8_t gain;
-    uint8_t mute;
-    uint8_t vol;
-} HEADPHONE_CONFIG;
-
-typedef struct __PCM_CONFIG {
-    uint8_t dac_interface;
-    uint8_t audio_wordlen;
-    uint8_t mute;
-    uint8_t vol;
-} PCM_CONFIG;
-
-typedef struct __SIN_HANDLE {
-    uint16_t frequency;
-    uint16_t amplitude;
-} SIN_HANDLE;
 /*--------------constants------------------*/
 //to DAC Tx modes
 #define TX_MCLK 0
