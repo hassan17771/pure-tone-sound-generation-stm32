@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "cs43l22.h"
+#include "beep_generation.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -115,8 +115,8 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   //sin_player(150, 1<<13);
-  external_mic();
-  //generate_beep();
+  //external_mic();
+  generate_beep();
   while (1)
   {
     /* USER CODE END WHILE */

@@ -1,5 +1,7 @@
 #include "beep_generation.h"
 
+BEEP_CONFIG bconf;
+
 void init_beep() {
     bconf.mode = BEEP_MULTIPLE;
     bconf.frequency = MAX_FREQ;
@@ -19,7 +21,7 @@ void beep_config() {
 
 void generate_beep() {
     config_register_mode();
-    master_config(MASTR_VOL_MAX, 0);
+    master_config(MASTR_VOL_MAX - 0x50, 0);
     beep_config();
     headphone_config();
     clock_config();

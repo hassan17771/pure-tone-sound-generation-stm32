@@ -5,7 +5,6 @@ extern I2S_HandleTypeDef hi2s_dac;
 extern I2S_HandleTypeDef hi2s_mic;
 extern USART_HandleTypeDef husart2;
 
-BEEP_CONFIG bconf;
 HEADPHONE_CONFIG hconf;
 PCM_CONFIG pconf;
 SIN_HANDLE sin_hndl;
@@ -50,7 +49,7 @@ static void gen_MCLK() {
 }
 
 //required init as written in datasheet.
-static void power_up() {
+void power_up() {
     write_reg(0x00, 1, 0x99);
     write_reg(0x47, 1, 0x80);
     write_reg(0x32, 1, 0xBB);
@@ -86,7 +85,6 @@ void init_headphone() {
     hconf.vol = HP_MAX_VOL;
 }
 
-//writing a part of a byte, in [s_bit...l_bit] part
 void partial_write(uint8_t reg_addr, uint8_t val,uint8_t s_bit, uint8_t l_bit) {
     uint8_t initial_val;
     read_reg(reg_addr, 1, &initial_val);
@@ -105,7 +103,6 @@ void headphone_config() {
     write_reg(HP_X_VOL_BURST, 2, hconf.vol, hconf.vol);
 }
 
-//using a config as datasheet , value of CLOCKING  register depends on MCLK and Fs(LRCLK) values 
 void clock_config() {
     write_reg(CLOCKING_CONF, 1, 0xA0);
 }
@@ -176,15 +173,12 @@ void sin_transmission() {
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
-//	HAL_StatusTypeDef status;
     switch(dac_mode) {
         case TX_SIN: sin_transmission(); break;
         case TX_MCLK: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break;
         case TX_EXTERNAL_MIC: HAL_I2S_Receive_IT(&hi2s_mic, &i2s_mic_rx_buffer, 1); break;
         default: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break;
     }
-//    sprintf((char*)usart_buffer, "status receive=%d\n\r", dac_mode);
-//    HAL_USART_Transmit(&husart2, usart_buffer, 20, HAL_MAX_DELAY);
 }
 
 void read_all_regs() {
@@ -209,10 +203,7 @@ void sin_player(uint16_t freq, uint16_t ampl) {
 }
 
 void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s) {
-//    sprintf((char*)usart_buffer, "mmmmmmmmmmmm\n\r");
-//    HAL_USART_Transmit(&husart2, usart_buffer, 13, HAL_MAX_DELAY);
     i2s_mic_tx_buffer = i2s_mic_rx_buffer >> 16;
-    //HAL_StatusTypeDef status =
     HAL_I2S_Transmit_IT(&hi2s_dac, &i2s_mic_tx_buffer, 1);
 }
 

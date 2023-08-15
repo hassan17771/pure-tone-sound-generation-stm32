@@ -12,15 +12,6 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 /*---------------typedef-------------------*/
-typedef struct __BEEP_CONFIG {
-    uint8_t mode;
-    uint8_t frequency;
-    uint8_t ontime;
-    uint8_t offtime;
-    uint8_t vol;
-    uint8_t TC_en;
-} BEEP_CONFIG;
-
 typedef struct __HEADPHONE_CONFIG {
     uint8_t power;
     uint8_t gain;
@@ -68,19 +59,6 @@ typedef struct __SIN_HANDLE {
 #define PDN 0x02
 #define CLOCKING_CONF 0x05
 #define STATUS 0x2E
-//beep config
-#define MIN_FREQ 0x0 //260.87 Hz
-#define MAX_FREQ 0xF //2181.82 Hz
-#define MIN_ONTIME 0x0 //86ms
-#define MAX_ONTIME 0xF //5.25s
-#define MIN_OFFTIME 0x0 //1.23s
-#define MAX_OFFTIME 0xF //10.8s
-#define MIN_BEEP_VOL 0x7 //-56dB step 2dB
-#define MAX_BEEP_VOL 0x6 //6dB
-#define BEEP_OFF 0x0
-#define BEEP_SINGLE 0x1
-#define BEEP_MULTIPLE 0x2
-#define BEEP_CONTINUOUS 0x3
 //headphone
 #define HP_MAX_GAIN 0x1 //1.143 step 0.14 
 #define HP_MIN_GAIN 0x0 //0.3959 step 0.14
@@ -107,10 +85,22 @@ typedef struct __SIN_HANDLE {
 //Digital MIC
 //#define RESCALE_24_TO_16(x) ((1<<16)/(1<<24) * x)
 /*---------------declrations---------------*/
-void generate_beep();
+void write_reg(uint8_t addr, int cnt, ...);
+void read_reg(uint8_t addr, int cnt, uint8_t* buff);
+void power_up();
+void config_register_mode();
+void master_config(uint8_t vol, int mute);
+//writing a part of a byte, in [s_bit...l_bit] part
+void partial_write(uint8_t reg_addr, uint8_t val,uint8_t s_bit, uint8_t l_bit);
+void headphone_config();
+//using a config as datasheet , value of CLOCKING  register depends on MCLK and Fs(LRCLK) values 
+void clock_config();
+void PCM_config();
+void read_all_regs();
+
+
 void sin_player(uint16_t freq, uint16_t ampl);
 void external_mic();
-
 #ifdef __cplusplus
 }
 #endif
