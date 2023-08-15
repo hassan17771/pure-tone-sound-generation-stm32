@@ -1,5 +1,5 @@
-#ifndef __CS43L22_H
-#define __CS43L22_H
+#ifndef __DIGITAL_MIC
+#define __DIGITAL_MIC
 
 #ifdef __cplusplus
 extern "C" {

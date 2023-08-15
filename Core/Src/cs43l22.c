@@ -1,17 +1,15 @@
 #include "cs43l22.h"
 
 extern I2C_HandleTypeDef hi2c1;
-extern I2S_HandleTypeDef hi2s_dac;
 extern I2S_HandleTypeDef hi2s_mic;
+extern I2S_HandleTypeDef hi2s_dac;
 extern USART_HandleTypeDef husart2;
+extern uint8_t dac_mode;
 
 HEADPHONE_CONFIG hconf;
 PCM_CONFIG pconf;
-SIN_HANDLE sin_hndl;
-uint8_t dac_mode;
 
 uint16_t dummy_buffer;
-uint16_t i2s_buff[8];
 uint32_t i2s_mic_rx_buffer;
 uint16_t i2s_mic_tx_buffer;
 uint8_t usart_buffer[30];
@@ -42,9 +40,7 @@ void reset_dac() {
     HAL_GPIO_WritePin(Audio_RST_GPIO_Port, Audio_RST_Pin, GPIO_PIN_RESET);
 }
 
-static void gen_MCLK() {
-	dummy_buffer = 0;
-    dac_mode = TX_MCLK;
+void gen_MCLK() {
     HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1);
 }
 
@@ -60,7 +56,9 @@ void power_up() {
 }
 
 void config_register_mode() {
-    //reset before starting
+    //reset before starting and some initial values
+    dummy_buffer = 0;
+    dac_mode = TX_MCLK;
     set_dac();
     HAL_Delay(100);
     reset_dac();
@@ -107,25 +105,6 @@ void clock_config() {
     write_reg(CLOCKING_CONF, 1, 0xA0);
 }
 
-void save_sin_on_flash() {
-    uint16_t temp_sin_data;
-    //erasing the sector before using it
-    uint32_t sector_erase_error = 0;
-    FLASH_EraseInitTypeDef f_erase = {0};
-    f_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-    f_erase.Sector = FLASH_SECTOR_11;
-    f_erase.NbSectors = 1;
-    HAL_FLASH_Unlock();
-    HAL_FLASHEx_Erase(&f_erase, &sector_erase_error);
-    //init flash sector
-    if (Fs < 2*sin_hndl.frequency) return;
-    for (int n = 0; n < Fs; n++) {
-        temp_sin_data = DIGITAL_SIN(n, sin_hndl.amplitude, sin_hndl.frequency);
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_SECTOR11_START+(n*2), temp_sin_data);
-    }
-    HAL_FLASH_Lock();
-}
-
 void init_PCM() {
     pconf.dac_interface = I2S_INTERFACE;
     pconf.audio_wordlen = WORD_LEN_16BIT;
@@ -141,66 +120,11 @@ void PCM_config() {
     write_reg(PCMx_VOL_BURST, 2, pcmx_vol, pcmx_vol);
 }
 
-void read_flash(uint16_t* data_array, uint32_t flash_addr) {
-    uint64_t flash_page = *(uint64_t*)flash_addr;
-    data_array[3] = flash_page >> 48;
-    data_array[2] = (flash_page << 16) >> 48;
-    data_array[1] = (flash_page << 32) >> 48;
-    data_array[0] = (flash_page << 48) >> 48;
-}
-
-void sin_transmission() {
-    static uint16_t mem_cnt = 1;
-    uint16_t sin_data[4];
-    read_flash(sin_data, FLASH_SECTOR11_START+(mem_cnt-1)*8);
-    i2s_buff[0] = sin_data[0];
-    i2s_buff[1] = sin_data[0];
-    i2s_buff[2] = sin_data[1];
-    i2s_buff[3] = sin_data[1];
-    i2s_buff[4] = sin_data[2];
-    i2s_buff[5] = sin_data[2];
-    i2s_buff[6] = sin_data[3];
-    i2s_buff[7] = sin_data[3];
-    if (mem_cnt >= (int)(Fs/4)){
-    	uint8_t rem = Fs % 4;
-        if (rem != 0) HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 2*rem);
-        else  HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 8);
-        mem_cnt = 1;
-    } else {
-    	HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 8);
-    	mem_cnt++;
-    }
-}
-
-void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    switch(dac_mode) {
-        case TX_SIN: sin_transmission(); break;
-        case TX_MCLK: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break;
-        case TX_EXTERNAL_MIC: HAL_I2S_Receive_IT(&hi2s_mic, &i2s_mic_rx_buffer, 1); break;
-        default: HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1); break;
-    }
-}
-
 void read_all_regs() {
     uint8_t all_regs[50];
     read_reg(DEVICE_ID, 50, all_regs);
 }
 
-void sin_player(uint16_t freq, uint16_t ampl) {
-    //initial config
-    config_register_mode();
-    master_config(MASTR_VOL_MAX - 0x40, 0);
-    headphone_config();
-    clock_config();
-    PCM_config();
-    power_up();
-    //sin generation
-    sin_hndl.frequency = freq;
-    sin_hndl.amplitude = ampl;
-    save_sin_on_flash();
-    //start_sending sin wave
-    dac_mode = TX_SIN;
-}
 
 void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s) {
     i2s_mic_tx_buffer = i2s_mic_rx_buffer >> 16;

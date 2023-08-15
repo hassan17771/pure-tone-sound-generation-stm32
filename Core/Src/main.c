@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "beep_generation.h"
+#include "sin_generation.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,6 +50,7 @@ SPI_HandleTypeDef hspi1;
 USART_HandleTypeDef husart2;
 
 /* USER CODE BEGIN PV */
+uint8_t dac_mode;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,6 +70,14 @@ void MX_USB_HOST_Process(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
+    switch(dac_mode) {
+        case TX_SIN: sin_transmission(); break;
+        case TX_MCLK: gen_MCLK();; break;
+        //case TX_EXTERNAL_MIC: HAL_I2S_Receive_IT(&hi2s_mic, &i2s_mic_rx_buffer, 1); break;
+        default: gen_MCLK(); break;
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -114,9 +123,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //sin_player(150, 1<<13);
+  sin_player(10000, 1<<13);
   //external_mic();
-  generate_beep();
+  //generate_beep();
   while (1)
   {
     /* USER CODE END WHILE */
