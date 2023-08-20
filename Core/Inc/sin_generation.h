@@ -6,6 +6,7 @@ extern "C" {
 #endif
 /*--------------library--------------------*/
 #include "cs43l22.h"
+#include <math.h>
 /*---------------typedef-------------------*/
 typedef struct __SIN_HANDLE {
     uint16_t frequency;

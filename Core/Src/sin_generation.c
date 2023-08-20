@@ -3,7 +3,7 @@
 SIN_HANDLE sin_hndl;
 
 extern uint8_t dac_mode;
-extern I2S_HandleTypeDef hi2s_dac;
+extern I2S_HandleTypeDef hi2s3;
 
 uint16_t i2s_buff[8];
 
@@ -29,11 +29,11 @@ void sin_transmission() {
     i2s_buff[7] = sin_data[3];
     if (mem_cnt >= (int)(Fs/4)){
     	uint8_t rem = Fs % 4;
-        if (rem != 0) HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 2*rem);
-        else  HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 8);
+        if (rem != 0) HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 2*rem);
+        else  HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 8);
         mem_cnt = 1;
     } else {
-    	HAL_I2S_Transmit_IT(&hi2s_dac, i2s_buff, 8);
+    	HAL_I2S_Transmit_IT(&hi2s3, i2s_buff, 8);
     	mem_cnt++;
     }
 }

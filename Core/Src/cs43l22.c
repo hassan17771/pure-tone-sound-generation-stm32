@@ -1,18 +1,13 @@
 #include "cs43l22.h"
 
 extern I2C_HandleTypeDef hi2c1;
-extern I2S_HandleTypeDef hi2s_mic;
-extern I2S_HandleTypeDef hi2s_dac;
-extern USART_HandleTypeDef husart2;
+extern I2S_HandleTypeDef hi2s3;
 extern uint8_t dac_mode;
 
 HEADPHONE_CONFIG hconf;
 PCM_CONFIG pconf;
 
 uint16_t dummy_buffer;
-uint32_t i2s_mic_rx_buffer;
-uint16_t i2s_mic_tx_buffer;
-uint8_t usart_buffer[30];
 
 void write_reg(uint8_t reg_addr, int count, ...) {
     uint8_t buff[10];
@@ -41,7 +36,7 @@ void reset_dac() {
 }
 
 void gen_MCLK() {
-    HAL_I2S_Transmit_IT(&hi2s_dac, &dummy_buffer, 1);
+    HAL_I2S_Transmit_IT(&hi2s3, &dummy_buffer, 1);
 }
 
 //required init as written in datasheet.
@@ -123,20 +118,4 @@ void PCM_config() {
 void read_all_regs() {
     uint8_t all_regs[50];
     read_reg(DEVICE_ID, 50, all_regs);
-}
-
-
-void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    i2s_mic_tx_buffer = i2s_mic_rx_buffer >> 16;
-    HAL_I2S_Transmit_IT(&hi2s_dac, &i2s_mic_tx_buffer, 1);
-}
-
-void external_mic() {
-    config_register_mode();
-    master_config(MASTR_VOL_MAX - 0xA0, 0);
-    headphone_config();
-    clock_config();
-    PCM_config();
-    power_up();
-    dac_mode = TX_EXTERNAL_MIC;
 }

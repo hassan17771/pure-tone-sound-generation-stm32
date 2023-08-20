@@ -24,6 +24,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "sin_generation.h"
+#include "digital_mic.h"
+#include "beep_generation.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,8 +44,10 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
-I2S_HandleTypeDef hi2s_mic;
-I2S_HandleTypeDef hi2s_dac;
+I2S_HandleTypeDef hi2s2;
+I2S_HandleTypeDef hi2s3;
+DMA_HandleTypeDef hdma_spi2_rx;
+DMA_HandleTypeDef hdma_spi3_tx;
 
 SPI_HandleTypeDef hspi1;
 
@@ -57,6 +61,7 @@ uint8_t dac_mode;
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_I2S3_Init(void);
 static void MX_SPI1_Init(void);
@@ -73,9 +78,10 @@ void MX_USB_HOST_Process(void);
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
     switch(dac_mode) {
         case TX_SIN: sin_transmission(); break;
-        case TX_MCLK: gen_MCLK();; break;
-        //case TX_EXTERNAL_MIC: HAL_I2S_Receive_IT(&hi2s_mic, &i2s_mic_rx_buffer, 1); break;
-        default: gen_MCLK(); break;
+        case TX_MCLK: gen_MCLK(); break;
+        case TX_EXTERNAL_MIC: mic_transmit(); break;
+        case TX_PASS: break;
+        default: gen_MCLK();
     }
 }
 /* USER CODE END 0 */
@@ -111,6 +117,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2S3_Init();
   MX_SPI1_Init();
@@ -123,8 +130,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  sin_player(10000, 1<<13);
-  //external_mic();
+  //sin_player(5000, 1<<13);
+  external_mic();
   //generate_beep();
   while (1)
   {
@@ -249,16 +256,16 @@ static void MX_I2S2_Init(void)
   /* USER CODE BEGIN I2S2_Init 1 */
 
   /* USER CODE END I2S2_Init 1 */
-  hi2s_mic.Instance = SPI2;
-  hi2s_mic.Init.Mode = I2S_MODE_MASTER_RX;
-  hi2s_mic.Init.Standard = I2S_STANDARD_PHILIPS;
-  hi2s_mic.Init.DataFormat = I2S_DATAFORMAT_24B;
-  hi2s_mic.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-  hi2s_mic.Init.AudioFreq = I2S_AUDIOFREQ_48K;
-  hi2s_mic.Init.CPOL = I2S_CPOL_LOW;
-  hi2s_mic.Init.ClockSource = I2S_CLOCK_PLL;
-  hi2s_mic.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
-  if (HAL_I2S_Init(&hi2s_mic) != HAL_OK)
+  hi2s2.Instance = SPI2;
+  hi2s2.Init.Mode = I2S_MODE_MASTER_RX;
+  hi2s2.Init.Standard = I2S_STANDARD_PHILIPS;
+  hi2s2.Init.DataFormat = I2S_DATAFORMAT_24B;
+  hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+  hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_48K;
+  hi2s2.Init.CPOL = I2S_CPOL_LOW;
+  hi2s2.Init.ClockSource = I2S_CLOCK_PLL;
+  hi2s2.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
+  if (HAL_I2S_Init(&hi2s2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -283,16 +290,16 @@ static void MX_I2S3_Init(void)
   /* USER CODE BEGIN I2S3_Init 1 */
 
   /* USER CODE END I2S3_Init 1 */
-  hi2s_dac.Instance = SPI3;
-  hi2s_dac.Init.Mode = I2S_MODE_MASTER_TX;
-  hi2s_dac.Init.Standard = I2S_STANDARD_PHILIPS;
-  hi2s_dac.Init.DataFormat = I2S_DATAFORMAT_16B;
-  hi2s_dac.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-  hi2s_dac.Init.AudioFreq = I2S_AUDIOFREQ_48K;
-  hi2s_dac.Init.CPOL = I2S_CPOL_LOW;
-  hi2s_dac.Init.ClockSource = I2S_CLOCK_PLL;
-  hi2s_dac.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
-  if (HAL_I2S_Init(&hi2s_dac) != HAL_OK)
+  hi2s3.Instance = SPI3;
+  hi2s3.Init.Mode = I2S_MODE_MASTER_TX;
+  hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
+  hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B;
+  hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
+  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_48K;
+  hi2s3.Init.CPOL = I2S_CPOL_LOW;
+  hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
+  hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
+  if (HAL_I2S_Init(&hi2s3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -356,7 +363,7 @@ static void MX_USART2_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   husart2.Instance = USART2;
-  husart2.Init.BaudRate = 9600;
+  husart2.Init.BaudRate = 128000;
   husart2.Init.WordLength = USART_WORDLENGTH_8B;
   husart2.Init.StopBits = USART_STOPBITS_1;
   husart2.Init.Parity = USART_PARITY_NONE;
@@ -371,6 +378,25 @@ static void MX_USART2_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
 }
 

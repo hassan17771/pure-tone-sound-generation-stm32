@@ -8,9 +8,7 @@ extern "C" {
 #include "main.h"
 #include "stdarg.h"
 #include <stdint.h>
-#include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
 /*----------------------------typedef------------------------------*/
 typedef struct __HEADPHONE_CONFIG {
     uint8_t power;
@@ -30,6 +28,7 @@ typedef struct __PCM_CONFIG {
 #define TX_MCLK 0
 #define TX_SIN 1 
 #define TX_EXTERNAL_MIC 2
+#define TX_PASS 3
 //dev addrs
 #define CS43L22_write 0x94
 #define CS43L22_read 0x95
@@ -66,6 +65,7 @@ typedef struct __PCM_CONFIG {
 //PCM
 #define I2S_INTERFACE 0x1
 #define WORD_LEN_16BIT 0x3
+#define WORD_LEN_24BIT 0x0
 #define PCM_MAX_VOL 0x18 //12dB step 0.5dB 
 #define PCM_MIN_VOL 0x19 //-51.5dB step 0.5dB
 //Digital MIC
